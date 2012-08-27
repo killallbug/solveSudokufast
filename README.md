@@ -1,4 +1,4 @@
 solveSudokufast
 ===============
 
-solveSudokufast,only 36ms
+solveSudokufast,only 0.36S
