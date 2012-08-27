@@ -1,27 +1,225 @@
-*.py[co]
+# -*- coding: gbk -*-
+#python version:2.6
 
-# Packages
-*.egg
-*.egg-info
-dist
-build
-eggs
-parts
-bin
-var
-sdist
-develop-eggs
-.installed.cfg
+"""
+Author:BearSword<bearsword@gmail.com>
+FileName:main.py
+Type:Utility
+Last modified:2012-07-24
 
-# Installer logs
-pip-log.txt
+Description:
+This file is for Sudoku
+use time:0.387000083923;repeat times:168
+"""
 
-# Unit test / coverage reports
-.coverage
-.tox
+import time
+import copy
 
-#Translations
-*.mo
+class solveSudoku(object):
+    def __init__(self):
+        t = time.time()
+        print 'start time:',t
+        puzzle = [8,0,0,0,0,0,0,0,0,
+                  0,0,3,6,0,0,0,0,0,
+                  0,7,0,0,9,0,2,0,0,
+                  0,5,0,0,0,7,0,0,0,
+                  0,0,0,0,4,5,7,0,0,
+                  0,0,0,1,0,0,0,3,0,
+                  0,0,1,0,0,0,0,6,8,
+                  0,0,8,5,0,0,0,1,0,
+                  0,9,0,0,0,0,4,0,0]
+        if len(puzzle) != 81:
+            print False
+            return
+        flag,puzzledict = self.exhaustcell(puzzle)
+        if not flag:
+            print False,2
+            return
+        print 'init',time.time()-t
+        puzzledict = self.master(puzzledict)
+        solution = puzzle[:]
+        for row in puzzledict['confirm']:
+            for column in puzzledict['confirm'][row]:
+                solution[row*9+column] = puzzledict['confirm'][row][column]
+        for i in xrange(9):
+            print solution[i*9:i*9+9]
+        print 'end time:',time.time()
+        print 'total time pay',(time.time())-t
+        return
 
-#Mr Developer
-.mr.developer.cfg
+    def exhaustcell(self,puzzle):
+        puzzledict = {'puzzle':{},'confirm':{},'onenum':[],'twonum':[]}
+        temp = {}
+        for row in xrange(9):
+            puzzledict['puzzle'][row] = {}
+            temp[row] = {}
+            for column in xrange(9):
+                if puzzle[row*9+column] == 0:
+                    puzzledict['puzzle'][row][column] = {}.fromkeys((i for i in xrange(1,10)),True)
+                else:
+                    temp[row][column] = puzzle[row*9+column]
+        for row in temp:
+            for column in temp[row]:
+                puzzledict['onenum'] = [row,column,temp[row][column]]
+                flag = self.deleteexist(puzzledict,True)
+        return flag,puzzledict
+
+    def master(self,puzzledict):
+        puzzlelist = [puzzledict]
+        for i in xrange(10000):
+            if self.recursion(puzzlelist):
+                print i
+                return puzzlelist[-1]
+        return puzzlelist[0]
+
+    def recursion(self,puzzlelist):
+        puzzledict = puzzlelist[-1]
+        puzzle = puzzledict['puzzle']
+        if len(puzzle) == 0:
+            return True
+        twonum = puzzledict['twonum']
+        tempkeys = puzzle[twonum[0]][twonum[1]].keys()
+        puzzledict['onenum'] = twonum[:]
+        temppuzzle = copy.deepcopy(puzzledict)
+        puzzledict['onenum'].append(tempkeys[0])
+        temppuzzle['onenum'].append(tempkeys[1])
+        columnlenth = len(puzzle[twonum[0]])
+        if columnlenth == 1:
+            del puzzle[twonum[0]]
+            del temppuzzle['puzzle'][twonum[0]]
+        else:
+            del puzzle[twonum[0]][twonum[1]]
+            del temppuzzle['puzzle'][twonum[0]][twonum[1]]
+        if twonum[0] in puzzledict['confirm']:
+            puzzledict['confirm'][twonum[0]][twonum[1]] = tempkeys[0]
+        else:
+            puzzledict['confirm'][twonum[0]] = {twonum[1]:tempkeys[0]}
+        if twonum[0] in temppuzzle['confirm']:
+            temppuzzle['confirm'][twonum[0]][twonum[1]] = tempkeys[1]
+        else:
+            temppuzzle['confirm'][twonum[0]] = {twonum[1]:tempkeys[1]}            
+        if not self.deleteexist(puzzledict,True):
+            del puzzlelist[-1]
+        if self.deleteexist(temppuzzle,True):
+            puzzlelist.append(temppuzzle)
+        return False
+
+    def getonenum(self,puzzledict,flag):
+        if not flag:
+            return flag
+        puzzle = puzzledict['puzzle']
+        for row in puzzle:
+            onerow = {}
+            for column in puzzle[row]:
+                index = [row,column]
+                for number in puzzle[row][column]:
+                    if number in onerow:
+                        onerow[number].append(index)
+                    else:
+                        onerow[number] = [index]
+            for i in onerow:
+                if len(onerow[i]) == 1:
+                    templist = onerow[i][0]
+                    templist.append(i)
+                    puzzledict['onenum'] = templist
+                    if templist[0] in puzzledict['confirm']:
+                        puzzledict['confirm'][templist[0]][templist[1]] = i
+                    else:
+                        puzzledict['confirm'][templist[0]] = {templist[1]:i}
+                    if len(puzzle[templist[0]]) == 1:
+                        del puzzle[templist[0]]
+                    else:
+                        del puzzle[templist[0]][templist[1]]
+                    flag = self.deleteexist(puzzledict,flag)
+                    return flag
+        columnhas = {}
+        squarehas = {}
+        for row in puzzle:
+            for column in puzzle[row]:
+                index = [row,column]
+                if column not in columnhas:
+                    columnhas[column] = {}
+                if (row/3*3+column/3) not in squarehas:
+                    squarehas[(row/3*3+column/3)] = {}
+                for number in puzzle[row][column]:
+                    if number in columnhas[column]:
+                        columnhas[column][number].append(index)
+                    else:
+                        columnhas[column][number] = [index]
+                    if number in squarehas[(row/3*3+column/3)]:
+                        squarehas[(row/3*3+column/3)][number].append(index)
+                    else:
+                        squarehas[row/3*3+column/3][number] = [index]
+        for column in columnhas:
+            for i in columnhas[column]:
+                if len(columnhas[column][i]) == 1:
+                    templist = columnhas[column][i][0]
+                    templist.append(i)
+                    puzzledict['onenum'] = templist
+                    if templist[0] in puzzledict['confirm']:
+                        puzzledict['confirm'][templist[0]][templist[1]] = i
+                    else:
+                        puzzledict['confirm'][templist[0]] = {templist[1]:i}                    
+                    if len(puzzle[templist[0]]) == 1:
+                        del puzzle[templist[0]]
+                    else:
+                        del puzzle[templist[0]][templist[1]]
+                    flag = self.deleteexist(puzzledict,flag)
+                    return flag
+        for square in squarehas:
+            for i in squarehas[square]:
+                if len(squarehas[square]) == 1:
+                    templist = squarehas[square][i][0]
+                    templist.append(i)
+                    puzzledict['onenum'] = templist
+                    if templist[0] in puzzledict['confirm']:
+                        puzzledict['confirm'][templist[0]][templist[1]] = i
+                    else:
+                        puzzledict['confirm'][templist[0]] = {templist[1]:i}                    
+                    if len(puzzle[templist[0]]) == 1:
+                        del puzzle[templist[0]]
+                    else:
+                        del puzzle[templist[0]][templist[1]]
+                    flag = self.deleteexist(puzzledict,flag)
+                    return flag
+        return flag
+
+    def deleteexist(self,puzzledict,flag):
+        if not flag:
+            return flag
+        puzzle = puzzledict['puzzle']
+        temponenum = []
+        for row in puzzle:
+            for column in puzzle[row]:
+                if puzzledict['onenum'][2] in puzzle[row][column]:
+                    if row == puzzledict['onenum'][0]:
+                        del puzzle[row][column][puzzledict['onenum'][2]]
+                    elif column == puzzledict['onenum'][1]:
+                        del puzzle[row][column][puzzledict['onenum'][2]]
+                    elif row/3 == puzzledict['onenum'][0]/3 and column/3 == puzzledict['onenum'][1]/3:
+                        del puzzle[row][column][puzzledict['onenum'][2]]
+                if len(puzzle[row][column]) == 0:
+                    return False
+                elif len(puzzle[row][column]) == 1:
+                    temponenum = [row,column,puzzle[row][column].keys()[0]]
+                elif len(puzzle[row][column]) == 2:
+                    puzzledict['twonum'] = [row,column]
+        if temponenum == []:
+            flag = self.getonenum(puzzledict,flag)
+            return flag
+        else:
+            puzzledict['onenum'] = temponenum[:]
+            if temponenum[0] in puzzledict['confirm']:
+                puzzledict['confirm'][temponenum[0]][temponenum[1]] = temponenum[2]
+            else:
+                puzzledict['confirm'][temponenum[0]] = {temponenum[1]:temponenum[2]}
+            if len(puzzle[temponenum[0]]) == 1:
+               del puzzle[temponenum[0]]
+            else:
+               del puzzle[temponenum[0]][temponenum[1]]
+            if not self.deleteexist(puzzledict,flag):
+                return False
+        return True
+    
+if __name__ == '__main__':
+    solve = solveSudoku()
